@@ -1,0 +1,24 @@
+# General
+# =======
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+*.tmp
+*.bak
+*.swp
+*.pdf
+
+# Sublime Editor
+.sublime-project
+*.sublime-project
+*.sublime-workspace
+
+# Visual Studio
+# =========
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
