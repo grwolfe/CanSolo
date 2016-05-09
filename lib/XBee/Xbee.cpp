@@ -11,9 +11,13 @@ void Xbee::processCommand(char* com) {
 
      if (com[0] == 'p') {
          printf("Picture command recieved.  Taking picture...");
+         wait(1.5);
+         printf("done");
          printf("\r\n");
      } else if (com[0] == 'r') {
          printf("Reset command recieved.  Resetting processor...");
+         wait(1.5);
+         printf("done");
          printf("\r\n");
      } else {
          printf("Unrecognized command");

@@ -8,13 +8,17 @@ int main() {
     light();
     wait(3);
     // memory();
+    // wait(3);
+    f_gps();
     wait(3);
+    release();
+    // wait(3);
+    // recovery(3);
 
     while(1);   // loop forever
 }
 
 void scan() {
-    // I2C scan
     int error, address;
     int nDevices = 0;
     printf("Scanning...\r\n");
@@ -30,21 +34,21 @@ void scan() {
         }
     }
     if (nDevices == 0) printf("No I2C device found\r\n");
-    else printf("\r\nDone\r\n");
+    else printf("\r\nDone\r\n\n");
 }
 
 void voltage() {
     int x = vref.read_u16();    // Normalized ADC value
     printf("Raw voltage reference = %i\r\n", x);
-    int measured = ((x * 3.3)/65535);    // convert ADC value to the Voltage
-    printf("Measured analog voltage = %i\r\n", measured);
-    int actual = measured * 2;  // convert the measured voltage to the source voltage
-    printf("Acutal voltage = %i\r\n", actual);
+    double measured = ((x * 3.3)/65535);    // convert ADC value to the Voltage
+    printf("Measured analog voltage = %f\r\n", measured);
+    double actual = measured * 2;  // convert the measured voltage to the source voltage
+    printf("Acutal voltage = %f\r\n\n", actual);
 }
 
 void light() {
     int raw = lref.read_u16();
-    printf("Raw light sensor value = %i\r\n", raw);
+    printf("Raw light sensor value = %i\r\n\n", raw);
 }
 
 // void memory() {
@@ -52,4 +56,69 @@ void light() {
 //     fprintf(fp, "1234, 5678, 91011, 121314, 151617, 181920\n\r");
 //     fclose(fp);
 //     printf("Saved data to SD card\r\n");
+// }
+
+void f_gps() {
+    gps = new SoftSerial(p11, p12);
+    Adafruit_GPS myGPS(gps);
+    char c;
+    Timer refresh_Timer;
+    Timer timeout;
+    const int refresh_Time = 2000;
+
+    myGPS.begin(9600);
+    printf("GPS Here\r\n");
+    myGPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+    myGPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+    myGPS.sendCommand(PGCMD_ANTENNA);
+    printf("Connection established at 115200 baud...\r\n");
+
+    refresh_Timer.start();
+    timeout.start();
+    while(true) {
+        if (timeout.read() > 3) break;
+        c = myGPS.read();   //queries the GPS
+
+        if (c) { printf("%c", c); } //this line will echo the GPS data if not paused
+
+        //check if we recieved a new message from GPS, if so, attempt to parse it,
+        if ( myGPS.newNMEAreceived() ) {
+            if ( !myGPS.parse(myGPS.lastNMEA()) ) {
+                continue;
+            }
+        }
+
+        //check if enough time has passed to warrant printing GPS info to screen
+        //note if refresh_Time is too low or pc.baud is too low, GPS data may be lost during printing
+        if (refresh_Timer.read_ms() >= refresh_Time) {
+            refresh_Timer.reset();
+            printf("Time: %d:%d:%d.%u\r\n", myGPS.hour, myGPS.minute, myGPS.seconds, myGPS.milliseconds);
+            printf("Date: %d/%d/20%d\r\n", myGPS.day, myGPS.month, myGPS.year);
+            printf("Fix: %d\r\n", (int) myGPS.fix);
+            printf("Quality: %d\r\n", (int) myGPS.fixquality);
+            if (myGPS.fix) {
+                printf("Location: %5.2f%c, %5.2f%c\r\n", myGPS.latitude, myGPS.lat, myGPS.longitude, myGPS.lon);
+                printf("Speed: %5.2f knots\r\n", myGPS.speed);
+                printf("Angle: %5.2f\r\n", myGPS.angle);
+                printf("Altitude: %5.2f\r\n", myGPS.altitude);
+                printf("Satellites: %d\r\n", myGPS.satellites);
+            }
+        }
+    }
+    printf("\n");
+}
+
+void release() {
+    printf("Driving MOSFET control pin high... ");
+    mosfet.write(1);
+    printf("Done\r\n");
+    wait(2);
+    printf("Driving MOSFET control pin low... ");
+    mosfet.write(0);
+    printf("Done\r\n\n");
+}
+
+// void recovery() {
+//     printf("Activating buzzer...\r\n");
+//     printf("Done\r\n\n");
 // }
