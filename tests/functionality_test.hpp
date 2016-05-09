@@ -10,7 +10,7 @@ AnalogIn vref(p19); // Voltage divider reference
 AnalogIn lref(p20); // Light sensor reference
 
 // SD //
-SDFileSystem sd(p5, p6, p7, p8, "sd");
+// SDFileSystem sd(p5, p6, p7, p8, "sd");
 
 
 // Functions //

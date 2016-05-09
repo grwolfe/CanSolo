@@ -7,7 +7,7 @@ int main() {
     wait(3);
     light();
     wait(3);
-    memory();
+    // memory();
     wait(3);
 
     while(1);   // loop forever
