@@ -16,6 +16,7 @@ int main()
                 mosfet.write(1);                    // drive mosfet pin HIGH
                 xbee.printf("Done.\r\n");
                 wait(5);                            // wait certain amount of time, function takes in seconds
+                mosfet.write(0);                    // drive mosfet pin LOW
             } else {
                 xbee.printf("Unrecognized command.\r\n");   // if command isn't correct
             }
