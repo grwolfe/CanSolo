@@ -1,5 +1,68 @@
 #include "main.h"
 
+/**
+ * Callback function for readJpegFileContent.
+ *
+ * @param buf A pointer to a buffer.
+ * @param siz A size of the buffer.
+ */
+void callback_func(int done, int total, uint8_t *buf, size_t siz) {
+    fwrite(buf, siz, 1, work.fp);
+
+    static int n = 0;
+    int tmp = done * 100 / total;
+    if (n != tmp) {
+        n = tmp;
+        DEBMSG("Writing...: %3d%%", n);
+        NEWLINE();
+    }
+}
+
+/**
+ * Capture.
+ *
+ * @param cam A pointer to a camera object.
+ * @param filename The file name.
+ *
+ * @return Return 0 if it succeed.
+ */
+int capture(Camera_LS_Y201 *cam, char *filename) {
+    /*
+     * Take a picture.
+     */
+    if (cam->takePicture() != 0) {
+        return -1;
+    }
+    DEBMSG("Captured.");
+    NEWLINE();
+
+    /*
+     * Open file.
+     */
+    work.fp = fopen(filename, "wb");
+    if (work.fp == NULL) {
+        return -2;
+    }
+
+    /*
+     * Read the content.
+     */
+    DEBMSG("%s", filename);
+    NEWLINE();
+    if (cam->readJpegFileContent(callback_func) != 0) {
+        fclose(work.fp);
+        return -3;
+    }
+    fclose(work.fp);
+
+    /*
+     * Stop taking pictures.
+     */
+    cam->stopTakingPictures();
+
+    return 0;
+}
+
 int main() {
     scan();
     wait(3);
@@ -7,20 +70,22 @@ int main() {
     wait(3);
     light();
     wait(3);
-    // memory();
-    // wait(3);
     f_gps();
     wait(3);
     release();
-    // wait(3);
-    // recovery(3);
+    wait(3);
+    radio();
+    wait(3);
+    image();
+    wait(3);
+    recovery();
 
-    while(1);   // loop forever
+    while(1);   // end program loop forever
 }
 
 void scan() {
     int error, address;
-    int nDevices = 0;
+    int ndevices = 0;
     printf("Scanning...\r\n");
     for (address = 1; address < 127; address++)
     {
@@ -30,10 +95,10 @@ void scan() {
         if (error == 1)
         {
             printf("I2C device found at address 0x%X\r\n", address);
-            nDevices++;
+            ndevices++;
         }
     }
-    if (nDevices == 0) printf("No I2C device found\r\n");
+    if (ndevices == 0) printf("No I2C device found\r\n");
     else printf("\r\nDone\r\n\n");
 }
 
@@ -67,16 +132,15 @@ void f_gps() {
     const int refresh_Time = 2000;
 
     myGPS.begin(9600);
-    printf("GPS Here\r\n");
+    printf("GPS Here...");
     myGPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
     myGPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
     myGPS.sendCommand(PGCMD_ANTENNA);
-    printf("Connection established at 115200 baud...\r\n");
+    printf("Connection established at 115200 baud.\r\n");
 
     refresh_Timer.start();
     timeout.start();
-    while(true) {
-        if (timeout.read() > 3) break;
+    while(timeout.read() <= 3) {
         c = myGPS.read();   //queries the GPS
 
         if (c) { printf("%c", c); } //this line will echo the GPS data if not paused
@@ -105,7 +169,7 @@ void f_gps() {
             }
         }
     }
-    printf("\n");
+    printf("\r\n");
 }
 
 void release() {
@@ -118,7 +182,61 @@ void release() {
     printf("Done\r\n\n");
 }
 
-// void recovery() {
-//     printf("Activating buzzer...\r\n");
-//     printf("Done\r\n\n");
-// }
+void recovery() {
+    printf("Activating buzzer...");
+    buzz.write(0.5);
+    printf("Done\r\n");
+    wait(2);
+    printf("Deactivating buzzer...");
+    buzz.write(0);
+    printf("Done\r\n\n");
+}
+
+void radio() {
+    printf("Starting radio session. Enter q to quit...\r\n");
+    while (true) {
+        if (pc.readable())
+        {
+            char c = pc.getc();
+            if (c == 'q') break;
+            xbee.putc(c);
+        } else if (xbee.readable()) {
+            pc.putc(xbee.getc());
+        }
+    }
+    printf("Ending radio session\r\n\n");
+}
+
+void image() {
+    DEBMSG("Camera module");
+    NEWLINE();
+    DEBMSG("Resetting...");
+    NEWLINE();
+    wait(1);
+
+    if (cam.reset() == 0) {
+        DEBMSG("Reset OK.");
+        NEWLINE();
+    } else {
+        DEBMSG("Reset fail.");
+        NEWLINE();
+        error("Reset fail.");
+    }
+    wait(1);
+
+    int cnt = 0;
+    while (cnt <= 3) {
+        char fname[64];
+        snprintf(fname, sizeof(fname) - 1, FILENAME, cnt);
+        int r = capture(&cam, fname);
+        if (r == 0) {
+            DEBMSG("[%04d]:OK.", cnt);
+            NEWLINE();
+        } else {
+            DEBMSG("[%04d]:NG. (code=%d)", cnt, r);
+            NEWLINE();
+            error("Failure.");
+        }
+        cnt++;
+    }
+}
