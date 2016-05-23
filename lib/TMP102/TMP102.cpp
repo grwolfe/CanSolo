@@ -23,8 +23,6 @@ THE SOFTWARE.
 
 #include "TMP102.h"
 
-#define TEMP_REG_ADDR 0x00
-
 TMP102::TMP102(PinName sda, PinName scl, int addr) : m_i2c(sda, scl), m_addr(addr)
 {
 
@@ -38,12 +36,12 @@ TMP102::~TMP102()
 float TMP102::read()
 {
 
-  const char tempRegAddr = TEMP_REG_ADDR;
+  const char tempRegAddr = TEMP_REG;
 
   m_i2c.write(m_addr, &tempRegAddr, 1); //Pointer to the temperature register
 
   char reg[2] = {0,0};
-  m_i2c.read(m_addr, reg, 2); //Rea
+  m_i2c.read(m_addr, reg, 2); //Read
 
   int16_t res  = ((int8_t)reg[0] << 4) | ((uint8_t)reg[1] >> 4);
 
