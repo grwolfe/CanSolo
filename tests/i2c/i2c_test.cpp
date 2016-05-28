@@ -17,9 +17,13 @@ ABP  pitot(SDA, SCL, ABP_ADD);
 Serial xbee(p13, p14);
 
 int main() {
+    if (!bmp.Initialize())
+        xbee.printf("Error in BMP init.\r\n");
+
     float bmp_pres, bmp_temp, tmp_temp, pitot_pres;
-    while(1) {
-        if (bmp.ReadData(bmp_temp, bmp_pres))
+    for (int i = 0; i < 3; i++)
+    {
+        if (bmp.ReadData(&bmp_temp, &bmp_pres))
         {
             xbee.printf("BMP Pressure: %f\r\n", bmp_pres);
             xbee.printf("BMP Temperature: %f\r\n", bmp_temp);

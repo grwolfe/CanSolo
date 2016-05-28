@@ -1,12 +1,14 @@
-#ifndef ABP.H
-#define ABP.H
+#ifndef ABP_H
+#define ABP_H
 
 #include "mbed.h"
 
+// #define DEBUG printf
+
 #define P_MAX   30      // max pressure is 30 PSI
 #define P_MIN   0       // min pressure is 0 PSI
-#define OUT_MAX 16384   // output max
-#define OUT_MIN 0       // output min
+#define OUT_MAX 14745   // output max
+#define OUT_MIN 1638    // output min
 
 class ABP
 {
@@ -19,6 +21,7 @@ public:
     ABP(PinName sda, PinName scl, int address);
     ~ABP();
     float getPressure();
+    int init(int freq);
 };
 
 #endif
