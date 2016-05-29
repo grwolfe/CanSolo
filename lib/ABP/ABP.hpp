@@ -20,7 +20,8 @@ public:
     // Constructor for ABP sensor object
     ABP(PinName sda, PinName scl, int address);
     ~ABP();
-    float getPressure();
+    float pressure();
+    float velocity();
     int init(int freq);
 };
 
