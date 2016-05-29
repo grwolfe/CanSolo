@@ -109,6 +109,33 @@ int BMP180::ReadData(float* pTemperature, float* pPressure)
     return 1;
 }
 
+int BMP180::read(float* pAltitude, float* pPressure)
+{
+    long p;
+
+    if (!ReadRawPressure(&p))
+    {
+        m_temperature = UNSET_BMP180_TEMPERATURE_VALUE;
+        m_pressure = UNSET_BMP180_PRESSURE_VALUE;
+        return 0;
+    }
+
+    m_pressure = TruePressure(p);
+    *pPressure = m_pressure;
+    *pAltitude = getAltitude(pPressure);
+
+    return 1;
+}
+
+float BMP180::getAltitude(float* p)
+{
+    // formula for conversion directly from documentation
+    float altitude = (*p / 1013.25);
+    altitude = pow(altitude, (1 / 5.255));
+    altitude = 44330 * (1 - altitude);
+    return altitude;
+}
+
 int BMP180::ReadRawTemperature(long* pUt)
 {
     int errors = 0;

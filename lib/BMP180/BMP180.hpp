@@ -97,6 +97,22 @@ public:
      */
     int ReadData(float* pTemperature = NULL, float* pPressure = NULL);
 
+    /** Read pressure and altitude from the BMP180.
+     * @param pressure (hPa)
+     * @param altitude (m)
+     * @returns
+     *   1 on success,
+     *   0 on error
+     */
+    int read(float* pAltitude = NULL, float* pPressure = NULL);
+
+    /** Convert pressure reading into altitude
+     * @param pressure (hPa)
+     * @returns
+     *   altitude (m)
+     */
+    float getAltitude(float* p);
+
     /** Get temperature from a previous measurement
      *
      * @returns
@@ -109,7 +125,7 @@ public:
      * @returns
      *   pressure (hPa)
      */
-   float GetPressure() {return m_pressure;};
+    float GetPressure() {return m_pressure;};
 
 protected:
 
