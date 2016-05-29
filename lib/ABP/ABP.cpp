@@ -14,17 +14,20 @@ ABP::~ABP()
 int ABP::init(int freq)
 {
     // implement an init function
+    i2c_.frequency(freq);
 }
 
 float ABP::velocity()
 {
-    // implement
+    // dynamic pressure equation
+    return sqrt(2 * (pressure_ / DENSITY));
 }
 
 float ABP::pressure()
 {
     int output = read();
-    return pressure = (float)(((output - OUT_MIN) * (P_MAX - P_MIN)) / (OUT_MAX - OUT_MIN)) + P_MIN;
+    pressure_ = (float)(((output - OUT_MIN) * (P_MAX - P_MIN)) / (OUT_MAX - OUT_MIN)) + P_MIN;
+    return pressure_;
 }
 
 int ABP::read()
