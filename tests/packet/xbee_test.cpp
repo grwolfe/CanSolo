@@ -23,14 +23,17 @@ Serial xbee(p13, p14);
 // }
 
 // TEST OF HOW NUMBERS ARE SENT WITH DIFFERENT COMMANDS
-void floatToBytes(float num, char* buffer)
+char* floatToBytes(float f)
 {
-    // convert a float into it's bytes, store in buffer
+    // convert a float into it's bytes
     // 4 bytes in a float, store MSB first
-    buffer[0] = (num >> 24);
-    buffer[1] = (num >> 16);
-    buffer[2] = (num >> 8);
-    buffer[3] = (num);
+    xbee.printf("Starting conversion\n");
+    char* buffer = new char[4];
+    int num = *((int*)&f);
+    for (int i = 0; i < 4; i++) {
+        buffer[3 - i] = (num >> 8 * i) & 0xFF;
+    }
+    return buffer;
 }
 
 int main()
@@ -51,9 +54,9 @@ int main()
     //     xbee.printf("%f\t%x\t%a\n", buff[i], buff[i], buff[i]);
     // }
     // xbee.printf("\n");
+    xbee.printf("Program Starting\n");
     float x = 13.4;
-    char bytes[4];
-    floatToBytes(x, bytes);
+    char* bytes = floatToBytes(x);
     xbee.printf("%f\n", x);
     for (int i = 0; i < 4; i++) {
         xbee.putc(bytes[i]);
@@ -73,7 +76,7 @@ int main()
 //         case 'p': xbee.printf("Picture command\n"); break;
 //         case 'r': xbee.printf("Reset command\n");   break;
 //         case 'q': xbee.printf("Quitting\n");        while(1);
-//         default: xbee.printf("Unknown command\n");  break;
+//         default: xbee.printf("Unknown command\n");
 //     }
 // }
 //
