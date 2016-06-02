@@ -1,33 +1,69 @@
-#include "mbed.h"
-#include "BMP180.h"
-#include "TMP102.h"
-#include "ABP.h"
-#include "SoftSerial.h"
-#include "MBed_Adafruit_GPS.h"
-#include "Xbee.h"
-
-#define size 28
-#define COMMA 0x2C  // HEX code for comma separator
-#define RETURN 0x0D // HEX code for carriage return
-
-uint8_t     packet8[size];  // packet with 8 bit index [char]
-uint16_t    packet16[size]; // packet with 16 bit index [int]
-
-void init()
-{
-    packet16[0] = 0x116b;    // 0x116b = 4459 [TEAMID]
-    packet16[1] = COMMA;
-    packet8[0] = 0x11;
-    packet8[1] = 0x6b;
-    packet8[2] = COMMA;
-}
-
-int formPacket(uint16_t* i, uint8_t* c)
-{
-
-}
+#include "main.h"
 
 int main()
 {
+    init();
+}
 
+void init()
+{
+    packet_count = 0;
+
+    packet[0] = 0x11;
+    packet[1] = 0x6b;
+    packet[2] = COMMA;
+
+    packet[3] = 0x00;
+    packet[4] = 0x00;
+    packet[5] = COMMA;
+
+    packet[47] = RETURN;
+
+    xbee.attach(&processCommand);
+    timer.attach(&transmit, 1);
+}
+
+void transmit()
+{
+    // transmit packet @ 1Hz
+    for (int i = 0; i < size; ++i) {
+        xbee.putc(packet[i]);
+    }
+}
+
+void processCommand()
+{
+    // process a command
+    char command = xbee.getc();
+    switch (command) {
+        case 'd':
+        case 'p':
+        case 'r':
+        case 'q':
+        default: xbee.printf("Unknown\n");
+    }
+}
+
+char* floatToBytes(float f)
+{
+    // convert a float into it's bytes
+    // 4 bytes in a float, store MSB first
+    char* buffer = new char[4];
+    int num = *((int*)&f);
+    for (int i = 0; i < 4; i++) {
+        buffer[3 - i] = (num >> 8 * i) & 0xFF;
+    }
+    return buffer;
+}
+
+char* intToBytes(int x)
+{
+    // convert an int into it's bytes
+    // 2 - 4 bytes in an int, store MSB 1st
+    char* buffer = new char[2];
+    for (int i = 0; i < 2; ++i)
+    {
+        buffer[1 - i] = (x >> 8 * i) & 0xFF;
+    }
+    return buffer;
 }

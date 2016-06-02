@@ -27,7 +27,6 @@ char* floatToBytes(float f)
 {
     // convert a float into it's bytes
     // 4 bytes in a float, store MSB first
-    xbee.printf("Starting conversion\n");
     char* buffer = new char[4];
     int num = *((int*)&f);
     for (int i = 0; i < 4; i++) {
