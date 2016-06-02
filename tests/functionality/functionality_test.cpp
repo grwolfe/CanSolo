@@ -124,8 +124,8 @@ void light() {
 // }
 
 void f_gps() {
-    gps = new SoftSerial(p11, p12);
-    Adafruit_GPS myGPS(gps);
+    // gps = new SoftSerial(p11, p12);
+    Adafruit_GPS myGPS(new SoftSerial(p11, p12));
     char c;
     Timer refresh_Timer;
     Timer timeout;

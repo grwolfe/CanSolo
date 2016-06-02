@@ -27,7 +27,7 @@ PwmOut buzz(p21);
 LocalFileSystem fs("local");
 
 // GPS //
-SoftSerial* gps;
+// SoftSerial* gps;
 
 // Serial //
 Serial xbee(p13, p14);
