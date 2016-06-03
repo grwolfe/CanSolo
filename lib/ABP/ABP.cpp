@@ -15,6 +15,7 @@ int ABP::init(int freq)
 {
     // implement an init function
     i2c_.frequency(freq);
+    return 0;
 }
 
 float ABP::velocity()
