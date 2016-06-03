@@ -136,7 +136,7 @@ void f_gps() {
     myGPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
     myGPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
     myGPS.sendCommand(PGCMD_ANTENNA);
-    printf("Connection established at 115200 baud.\r\n");
+    printf("Connection established at 9600 baud.\r\n");
 
     refresh_Timer.start();
     timeout.start();

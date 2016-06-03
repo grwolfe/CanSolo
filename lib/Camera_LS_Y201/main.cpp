@@ -1,12 +1,12 @@
 #include "mbed.h"
 #include "Camera_LS_Y201.h"
 #include "SDFileSystem.h"
- 
+
 #define DEBMSG      printf
 #define NEWLINE()   printf("\r\n")
- 
+
 #define USE_SDCARD 0
- 
+
 #if USE_SDCARD
 #define FILENAME    "/sd/IMG_%04d.jpg"
 SDFileSystem fs(p5, p6, p7, p8, "sd");
@@ -15,13 +15,13 @@ SDFileSystem fs(p5, p6, p7, p8, "sd");
 LocalFileSystem fs("local");
 #endif
 Camera_LS_Y201 cam1(p13, p14);
- 
+
 typedef struct work {
     FILE *fp;
 } work_t;
- 
+
 work_t work;
- 
+
 /**
  * Callback function for readJpegFileContent.
  *
@@ -30,7 +30,7 @@ work_t work;
  */
 void callback_func(int done, int total, uint8_t *buf, size_t siz) {
     fwrite(buf, siz, 1, work.fp);
- 
+
     static int n = 0;
     int tmp = done * 100 / total;
     if (n != tmp) {
@@ -39,7 +39,7 @@ void callback_func(int done, int total, uint8_t *buf, size_t siz) {
         NEWLINE();
     }
 }
- 
+
 /**
  * Capture.
  *
@@ -57,7 +57,7 @@ int capture(Camera_LS_Y201 *cam, char *filename) {
     }
     DEBMSG("Captured.");
     NEWLINE();
- 
+
     /*
      * Open file.
      */
@@ -65,7 +65,7 @@ int capture(Camera_LS_Y201 *cam, char *filename) {
     if (work.fp == NULL) {
         return -2;
     }
- 
+
     /*
      * Read the content.
      */
@@ -76,15 +76,15 @@ int capture(Camera_LS_Y201 *cam, char *filename) {
         return -3;
     }
     fclose(work.fp);
- 
+
     /*
      * Stop taking pictures.
      */
     cam->stopTakingPictures();
- 
+
     return 0;
 }
- 
+
 /**
  * Entry point.
  */
@@ -94,7 +94,7 @@ int main(void) {
     DEBMSG("Resetting...");
     NEWLINE();
     wait(1);
- 
+
     if (cam1.reset() == 0) {
         DEBMSG("Reset OK.");
         NEWLINE();
@@ -104,7 +104,7 @@ int main(void) {
         error("Reset fail.");
     }
     wait(1);
- 
+
     int cnt = 0;
     while (1) {
         char fname[64];
