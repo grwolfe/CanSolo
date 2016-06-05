@@ -33,19 +33,18 @@ TMP102::~TMP102()
 
 }
 
+int TMP102::init(int freq)
+{
+    m_i2c.frequency(freq);
+    const char tempRegAddr = TEMP_REG;
+    return m_i2c.write(m_addr, &tempRegAddr, 1);    // set pointer to temperature address & return, 0 on success nonzero on fail
+}
+
 float TMP102::read()
 {
-
-  const char tempRegAddr = TEMP_REG;
-
-  m_i2c.write(m_addr, &tempRegAddr, 1); //Pointer to the temperature register
-
-  char reg[2] = {0,0};
-  m_i2c.read(m_addr, reg, 2); //Read
-
-  int16_t res  = ((int8_t)reg[0] << 4) | ((uint8_t)reg[1] >> 4);
-
-  float temp =  (float) ((float)res * 0.0625);
-
-  return temp;
+    char reg[2] = {0,0};        // create buffer to hold recv bytes
+    m_i2c.read(m_addr, reg, 2); // read bytes into buffer
+    int16_t res  = ((int8_t)reg[0] << 4) | ((uint8_t)reg[1] >> 4);
+    float temp =  (float) ((float)res * 0.0625);
+    return temp;
 }

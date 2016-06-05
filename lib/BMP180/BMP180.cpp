@@ -131,7 +131,7 @@ float BMP180::getAltitude(float* p)
 {
     // formula for conversion directly from documentation
     float altitude = (*p / 1013.25);
-    altitude = pow(altitude, (1 / 5.255));
+    altitude = pow(altitude, (float)(1 / 5.255));
     altitude = 44330 * (1 - altitude);
     return altitude;
 }

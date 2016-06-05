@@ -58,10 +58,11 @@ public:
   */
   float read();
 
+  int init(int freq = 400000);
+
 private:
   I2C m_i2c;
   int m_addr;
-
 };
 
 #endif

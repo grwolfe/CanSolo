@@ -1,4 +1,4 @@
-#include "main.h"
+#include "system_test.h"
 
 int main()
 {
@@ -19,7 +19,7 @@ int main()
         */
         if (!deploy_flag)
         {
-            if (light_flag) // if detected ejection from rocket
+            if (light_flag) // if detected ejection from rocket, but not deployed
             {
                 // get altitude
                 float a;
@@ -36,29 +36,56 @@ int main()
 
 void init()
 {
-    set_time(0);        // set RTC to 0 seconds
-    packet_count = 0;   // initalize packet counter to 0
-    xbee.baud(9600);
+    set_time(0);    // begin mission time
 
-    if (!bmp.Initialize())   // setup bmp sensor
-        xbee.printf("Error in BMP init\n");
+    // clear mission information
+    TEAMID = 4459;
+    mission_time = 0;
+    com_time = 0;
+    packet_count = 0;
+    com_count = 0;
 
-    if (pitot.init())       // setup pitot sensor
-        xbee.printf("Error in ABP init\n");
+    // clear control flags
+    image_flag = false;
+    recovery_flag = false;
+    light_flag = false;
+    deploy_flag = false;
 
-    // initalize the GPS
+    xbee.baud(9600);    // start XBee communication
+    xbee.printf("Here...\r");
+
+    // setup GPS
     gps.begin(9600);
     gps.sendCommand(PMTK_SET_BAUD_9600);
     gps.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
     gps.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);
     gps.sendCommand(PGCMD_NOANTENNA);
 
-    // set up camera
-    if (cam.reset() != 0)
-        xbee.printf("Error setting up camera.\n");
+    // setup filesystem for recording data
+    fs.mount();
 
+    // set up camera
+    if (cam.reset() != 0) xbee.printf("Error setting up camera.\r");
+        else xbee.printf("Camera reset success\r");
+
+    // setup bmp sensor
+    if (!bmp.Initialize()) xbee.printf("Error in BMP init\r");
+        else xbee.printf("BMP init success\r");
+
+    // setup TMP sensor
+    if (tmp.init()) xbee.printf("Error in TMP init\r");
+        else xbee.printf("TMP init success\r");
+
+    // setup pitot sensor
+    if (pitot.init()) xbee.printf("Error in ABP init\r");
+        else xbee.printf("ABP init success\r");
+
+
+    // attach interrupts
     xbee.attach(&processCommand);   // set up RX interrupt handler
     timer.attach(&transmit, 1);     // set up timed interrupt handler
+
+    xbee.printf("Initialized\r");
 }
 
 void gatherTLM()
@@ -75,7 +102,9 @@ void gatherTLM()
 void gps_query()
 {
     // query the gps
-    while (true) {
+    Timer timeout;
+    timeout.start();
+    while (timeout.read_ms() <= 700) {
         char c = gps.read(); // query
         if (gps.newNMEAreceived() ) {
             if (!gps.parse(gps.lastNMEA()) ) {
@@ -90,6 +119,9 @@ void gps_query()
             alt = gps.altitude;
             sat = gps.satellites;
             spd = gps.speed;
+            xbee.printf("%i\r", timeout.read_ms());
+            break;
+            // once all the necessary TLM data has been answered break out of the loop
         }
     }
 }
@@ -113,7 +145,7 @@ void transmit()
     // transmit most recent packet @ 1Hz
     mission_time = time(NULL);  // update mission time
     ++packet_count;             // update packet counter
-    printf("%d,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
+    xbee.printf("%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
         TEAMID,
         mission_time,
         packet_count,
@@ -138,16 +170,43 @@ void transmit()
     );
 }
 
-void saveState()
+bool saveState()
 {
     // save everything needed to SD card
-
+    FILE *file = fopen("/sd/flightdata.csv", "a");
+    if (file == NULL) return 0;
+    fprintf(file, "%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
+        TEAMID,
+        mission_time,
+        packet_count,
+        altitude,
+        pressure,
+        speed,
+        temperature,
+        volt,
+        lat,
+        latDirection,
+        lon,
+        lonDirection,
+        alt,
+        sat,
+        spd,
+        com_time,
+        com_count,
+        light_flag,
+        deploy_flag,
+        image_flag,
+        recovery_flag
+    );
+    fclose(file);
+    return 1;
 }
 
 void processCommand()
 {
     // process a command
-    switch (xbee.getc()) {
+    char command = xbee.getc();
+    switch (command) {
         case 'd':                                   // deploy
             deploy_flag = true;
             mosfet.write(1);                        // activate the burn wire
@@ -174,7 +233,6 @@ void deployCallback()
 
 void recovery()
 {
-    gps_en.write(0);    // disable the gps
     timer.detach();     // end 1Hz transmission
 
     // activate the buzzer
@@ -186,10 +244,11 @@ void recovery()
 
 void image()
 {
+    image_flag = false;
     char fname[64];
     snprintf(fname, sizeof(fname) - 1, FILENAME, mission_time);
     if (capture(&cam, fname) != 0)
-        xbee.printf("Caputer Failure.");
+         xbee.printf("Capture Failure.");
 }
 
 int capture(Camera_LS_Y201 *cam, char *filename) {
