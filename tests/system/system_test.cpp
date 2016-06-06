@@ -64,9 +64,6 @@ void init()
     // setup filesystem for recording data
     fs.mount();
 
-    // set up camera
-    if (cam.reset() != 0) xbee.printf("Error setting up camera.\r");
-        else xbee.printf("Camera reset success\r");
 
     // setup bmp sensor
     if (!bmp.Initialize()) xbee.printf("Error in BMP init\r");
@@ -80,6 +77,10 @@ void init()
     if (pitot.init()) xbee.printf("Error in ABP init\r");
         else xbee.printf("ABP init success\r");
 
+
+    // set up camera
+    if (cam.reset() != 0) xbee.printf("Error setting up camera.\r");
+        else xbee.printf("Camera reset success\r");
 
     // attach interrupts
     xbee.attach(&processCommand);   // set up RX interrupt handler
@@ -96,7 +97,6 @@ void gatherTLM()
     temperature = tmp.read();
     volt = voltage();
     gps_query();
-    xbee.printf("Packet formed!\r");
 }
 
 void gps_query()
@@ -143,12 +143,10 @@ float light()
 void transmit()
 {
     // transmit most recent packet @ 1Hz
-    mission_time = time(NULL);  // update mission time
-    ++packet_count;             // update packet counter
     xbee.printf("%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
         TEAMID,
-        mission_time,
-        packet_count,
+        time(NULL),
+        ++packet_count,
         altitude,
         pressure,
         speed,
@@ -177,8 +175,8 @@ bool saveState()
     if (file == NULL) return 0;
     fprintf(file, "%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
         TEAMID,
-        mission_time,
-        packet_count,
+        time(NULL),
+        ++packet_count,
         altitude,
         pressure,
         speed,
@@ -246,7 +244,7 @@ void image()
 {
     image_flag = false;
     char fname[64];
-    snprintf(fname, sizeof(fname) - 1, FILENAME, mission_time);
+    snprintf(fname, sizeof(fname) - 1, FILENAME, time(NULL));
     if (capture(&cam, fname) != 0)
          xbee.printf("Capture Failure.");
 }
@@ -286,12 +284,4 @@ int capture(Camera_LS_Y201 *cam, char *filename) {
 
 void callback_func(int done, int total, uint8_t *buf, size_t siz) {
     fwrite(buf, siz, 1, work.fp);   // here is where the jpeg is actually being written to the SD Card
-
-    // static int n = 0;
-    // int tmp = done * 100 / total;
-    // if (n != tmp) {
-    //     n = tmp;
-    //     DEBMSG("Writing...: %3d%%", n);
-    //     NEWLINE();
-    // }
 }

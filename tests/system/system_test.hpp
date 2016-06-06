@@ -13,7 +13,7 @@
 #define MISO p6         // SPI MISO line
 #define SCK  p7         // SPI clock line
 #define SS   p8         // SPI slave select line
-#define LIGHT_THRESHOLD 3000
+#define LIGHT_THRESHOLD 100
 #define DEPLOY_ALT 400
 #define FILENAME "/sd/img_%04u.jpg"
 
