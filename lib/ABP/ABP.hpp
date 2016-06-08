@@ -14,18 +14,19 @@ class ABP
 private:
     I2C i2c_;           // communication protocol
     int addr_;          // slave address
-    float pressure_;    // value of last pressure reading
+    double pressure_;    // value of last pressure reading
 
 protected:
-    int read();         // read raw value from sensor
-    float pressure();   // determine pressure from sensor data
+    double PSItoPA(float psi) const;
 
 public:
     // Constructor for ABP sensor object
     ABP(PinName sda, PinName scl, int address);
     ~ABP();
-    int init(int freq = 400000);    // Initialize the sensor and i2c bus
-    float velocity();               // determine velocity based off sensor data
+    int read();           // read raw value from sensor
+    double pressure();          // determine pressure from sensor data
+    int init(int freq = 400000);// Initialize the sensor and i2c bus
+    double velocity();          // determine velocity based off sensor data
 };
 
 #endif

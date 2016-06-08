@@ -176,7 +176,7 @@ bool saveState()
     fprintf(file, "%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
         TEAMID,
         time(NULL),
-        ++packet_count,
+        packet_count,
         altitude,
         pressure,
         speed,
