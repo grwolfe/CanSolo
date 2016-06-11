@@ -95,7 +95,7 @@ public:
      *   1 on success,
      *   0 on error
      */
-    int ReadData(float* pTemperature = NULL, float* pPressure = NULL);
+    int ReadData(float* pTemperature = NULL, float* pPressure = NULL, float* pAltitude = NULL);
 
     /** Read pressure and altitude from the BMP180.
      * @param pressure (hPa)
@@ -155,6 +155,7 @@ protected:
     float m_temperature;
     float m_pressure;
     float m_altitude;
+    float m_reading;
 
     I2C m_i2c;
     int m_addr;
@@ -167,6 +168,7 @@ protected:
     long x1, x2, x3, b3, b5, b6;
     unsigned long b4, b7;
 
+    bool start;
 };
 
 #endif

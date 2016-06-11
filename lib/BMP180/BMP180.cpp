@@ -28,6 +28,7 @@ BMP180::BMP180(PinName sda, PinName scl, int address)
     m_oss = BMP180_OSS_NORMAL;
     m_temperature = UNSET_BMP180_TEMPERATURE_VALUE;
     m_pressure = UNSET_BMP180_PRESSURE_VALUE;
+    start = true;
 }
 
 BMP180::BMP180(I2C& i2c, int address)
@@ -37,6 +38,7 @@ BMP180::BMP180(I2C& i2c, int address)
     m_oss = BMP180_OSS_NORMAL;
     m_temperature = UNSET_BMP180_TEMPERATURE_VALUE;
     m_pressure = UNSET_BMP180_PRESSURE_VALUE;
+    start = true;
 }
 
 int  BMP180::Initialize(float altitude, int overSamplingSetting)
@@ -84,10 +86,16 @@ int  BMP180::Initialize(float altitude, int overSamplingSetting)
     errors = 0;
 #endif // #ifdef BMP180_TEST_FORMULA
 
+    if (start) {
+        start = false;
+        errors += ReadData(NULL, &m_reading, NULL);
+    }
+    printf("bmp reference: %f", m_reading);
+
     return errors? 0 : 1;
 }
 
-int BMP180::ReadData(float* pTemperature, float* pPressure)
+int BMP180::ReadData(float* pTemperature, float* pPressure, float* pAltitude)
 {
     long t, p;
 
@@ -105,6 +113,8 @@ int BMP180::ReadData(float* pTemperature, float* pPressure)
         *pPressure = m_pressure;
     if (pTemperature)
         *pTemperature = m_temperature;
+    if (pAltitude)
+        *pAltitude = getAltitude(pPressure);
 
     return 1;
 }
@@ -130,7 +140,7 @@ int BMP180::read(float* pAltitude, float* pPressure)
 float BMP180::getAltitude(float* p)
 {
     // formula for conversion directly from documentation
-    float altitude = (*p / 1013.25);
+    float altitude = (*p / m_reading);
     altitude = pow(altitude, (float)(1 / 5.255));
     altitude = 44330 * (1 - altitude);
     return altitude;

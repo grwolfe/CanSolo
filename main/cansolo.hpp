@@ -3,7 +3,7 @@
 #include "TMP102.h"
 #include "ABP.h"
 #include "SoftSerial.h"
-#include "MBed_Adafruit_GPS.h"
+#include "GPS.h"
 #include "Camera_LS_Y201.h"
 #include "SDFileSystem.h"
 
@@ -13,8 +13,9 @@
 #define MISO p6         // SPI MISO line
 #define SCK  p7         // SPI clock line
 #define SS   p8         // SPI slave select line
-#define LIGHT_THRESHOLD 100
+#define LIGHT_THRESHOLD 10
 #define DEPLOY_ALT 400
+#define BUZZ 370
 #define FILENAME "/sd/img_%04u.jpg"
 
 typedef struct work {
@@ -26,7 +27,6 @@ work_t work;
 // PACKET ENTRY DEFINITIONS //
 uint16_t
     TEAMID,         // TEAMID for CanSolo
-    mission_time,   // number of seconds since power on
     packet_count,   // number of packets transmitted
     com_count,      // number of image commands received
     com_time;       // time of last image command
@@ -35,6 +35,7 @@ float
     pressure,       // pressure sensor reading
     speed,          // pitot tube reading
     temperature,    // temp sensor reading
+    tBMP,           // bmp temp reading
     volt,           // battery voltage
     lat,            // gps latitude
     lon,            // gps longitude
@@ -50,7 +51,8 @@ bool
     image_flag,     // flag to handle picture command
     recovery_flag,  // flag to handle recovery command
     light_flag,     // flag to track released from rocket
-    deploy_flag;    // flag to track deployment conditions
+    deploy_flag,    // flag to track deployment conditions
+    reset_flag;     // flag to do software reset
 
 // MBED OBJECT DEFINTIONS //
 Ticker timer;                               // timer interrupt @ 1Hz
@@ -64,7 +66,7 @@ PwmOut buzzer(p25);                         // buzzer control signal
 Serial xbee(p13, p14);                      // setup xbee as serial connection
 
 // IMPORTED OBJECT DEFINTIONS //
-Adafruit_GPS gps(new SoftSerial(p11, p12)); // create GPS object
+GPS gps(p11,p12);                           // create GPS object
 SDFileSystem fs(MOSI, MISO, SCK, SS, "sd"); // setup MicroSD filesystem
 Camera_LS_Y201 cam(p9, p10);                // create camera object
 TMP102 tmp(SDA, SCL, 0x49 << 1);            // create TMP102 object

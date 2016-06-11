@@ -1,4 +1,4 @@
-#include "system_test.h"
+#include "cansolo.h"
 
 int main()
 {
@@ -8,6 +8,7 @@ int main()
         // handle command raised flags
         if (image_flag) image();
         if (recovery_flag) recovery();
+        if (reset_flag) reset();
 
         // handle state transition flags
         /*
@@ -22,8 +23,8 @@ int main()
             if (light_flag) // if detected ejection from rocket, but not deployed
             {
                 // get altitude
-                float a, p;
-                bmp.read(&a, &p);
+                float t, p, a;
+                bmp.ReadData(&t, &p, &a);
                 if (a <= DEPLOY_ALT) deploy();
             } else if (light() > LIGHT_THRESHOLD) { // if not ejected check if ejected
                 light_flag = true;
@@ -40,7 +41,6 @@ void init()
 
     // clear mission information
     TEAMID = 4459;
-    mission_time = 0;
     com_time = 0;
     packet_count = 0;
     com_count = 0;
@@ -48,6 +48,7 @@ void init()
     // clear control flags
     image_flag = false;
     recovery_flag = false;
+    reset_flag = false;
     light_flag = false;
     deploy_flag = false;
 
@@ -55,11 +56,7 @@ void init()
     xbee.printf("Here...\r");
 
     // setup GPS
-    gps.begin(9600);
-    gps.sendCommand(PMTK_SET_BAUD_9600);
-    gps.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-    gps.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);
-    gps.sendCommand(PGCMD_NOANTENNA);
+    gps.Init();
 
     // setup filesystem for recording data
     fs.mount();
@@ -92,7 +89,7 @@ void init()
 void gatherTLM()
 {
     // interact with sensors to form packet
-    bmp.read(&altitude, &pressure);
+    bmp.ReadData(&tBMP, &pressure, &altitude);
     speed = pitot.velocity();
     temperature = tmp.read();
     volt = voltage();
@@ -101,28 +98,14 @@ void gatherTLM()
 
 void gps_query()
 {
-    // query the gps
-    Timer timeout;
-    timeout.start();
-    while (timeout.read_ms() <= 700) {
-        char c = gps.read(); // query
-        if (gps.newNMEAreceived() ) {
-            if (!gps.parse(gps.lastNMEA()) ) {
-                continue;
-            }
-        }
-        if (gps.fix) {
-            lat = gps.latitude;
-            latDirection = gps.lat;
-            lon = gps.longitude;
-            lonDirection = gps.lon;
-            alt = gps.altitude;
-            sat = gps.satellites;
-            spd = gps.speed;
-            xbee.printf("%i\r", timeout.read_ms());
-            break;
-            // once all the necessary TLM data has been answered break out of the loop
-        }
+    if (gps.parseData()) {
+        lat = gps.latitude;
+        lon = gps.longitude;
+        spd = gps.mps;
+        sat = gps.satellites;
+        alt = gps.altitude;
+        latDirection = gps.ns;
+        lonDirection = gps.ew;
     }
 }
 
@@ -143,7 +126,7 @@ float light()
 void transmit()
 {
     // transmit most recent packet @ 1Hz
-    xbee.printf("%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
+    xbee.printf("%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u,%u,%f\r",
         TEAMID,
         time(NULL),
         ++packet_count,
@@ -164,7 +147,10 @@ void transmit()
         light_flag,
         deploy_flag,
         image_flag,
-        recovery_flag
+        recovery_flag,
+        gps.fix,
+        light(),
+        tBMP
     );
 }
 
@@ -173,7 +159,7 @@ bool saveState()
     // save everything needed to SD card
     FILE *file = fopen("/sd/flightdata.csv", "a");
     if (file == NULL) return 0;
-    fprintf(file, "%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u\r",
+    fprintf(file, "%u,%u,%u,%f,%f,%f,%f,%f,%f%c,%f%c,%f,%f,%f,%u,%u,%u,%u,%u,%u,%u,%f\r",
         TEAMID,
         time(NULL),
         packet_count,
@@ -194,10 +180,35 @@ bool saveState()
         light_flag,
         deploy_flag,
         image_flag,
-        recovery_flag
+        recovery_flag,
+        gps.fix,
+        light()
     );
     fclose(file);
     return 1;
+}
+
+void reset()
+{
+    reset_flag = false;
+    // setup bmp sensor
+    if (!bmp.Initialize()) xbee.printf("Error in BMP init\r");
+        else xbee.printf("BMP init success\r");
+
+    // setup TMP sensor
+    if (tmp.init()) xbee.printf("Error in TMP init\r");
+        else xbee.printf("TMP init success\r");
+
+    // setup pitot sensor
+    if (pitot.init()) xbee.printf("Error in ABP init\r");
+        else xbee.printf("ABP init success\r");
+
+    // Setup gps
+    gps.Init();
+
+    // set up camera
+    if (cam.reset() != 0) xbee.printf("Error setting up camera.\r");
+        else xbee.printf("Camera reset success\r");
 }
 
 void processCommand()
@@ -208,7 +219,7 @@ void processCommand()
         case 'd':                                   // deploy
             deploy_flag = true;
             mosfet.write(1);                        // activate the burn wire
-            burn_timeout.attach(&deployCallback, 5);// callback to shut off wire
+            burn_timeout.attach(&deployCallback,10);// callback to shut off wire
             break;
         case 'p':
             com_time = time(NULL);  // update time of picture command
@@ -225,7 +236,7 @@ void deploy()
 {
     deploy_flag = true;
     mosfet.write(1);    // activate the mosfet
-    burn_timeout.attach(&deployCallback, 5);   // create a timeout to turn off the mosfet; @param seconds
+    burn_timeout.attach(&deployCallback,10);   // create a timeout to turn off the mosfet; @param seconds
 }
 
 void deployCallback()
@@ -236,54 +247,42 @@ void recovery()
     timer.detach();     // end 1Hz transmission
 
     // activate the buzzer
-    buzzer.period_us(370);
-    buzzer.pulsewidth_us(185);
+    buzzer.period_us(BUZZ);
+    buzzer.pulsewidth_us(BUZZ/2);
     while (1);          // hang until manual shutoff
 }
 
 
 void image()
 {
+    timer.detach();
     image_flag = false;
     char fname[64];
     snprintf(fname, sizeof(fname) - 1, FILENAME, time(NULL));
     if (capture(&cam, fname) != 0)
          xbee.printf("Capture Failure.");
+    timer.attach(&transmit, 1);
 }
 
 int capture(Camera_LS_Y201 *cam, char *filename) {
-    /*
-     * Take a picture.
-     */
-    if (cam->takePicture() != 0) {
-        return -1;  // fail
-    }
+    // Take picture
+    if (cam->takePicture() != 0) return -1;  // fail
 
-    /*
-     * Open file.
-     */
+    // Open file
     work.fp = fopen(filename, "wb");
-    if (work.fp == NULL) {
-        return -2;  // fail
-    }
+    if (work.fp == NULL) return -2;  // fail
 
-    /*
-     * Read the content.
-     */
+    // Read the content
     if (cam->readJpegFileContent(callback_func) != 0) {
         fclose(work.fp);
         return -3;  // fail
     }
     fclose(work.fp);
 
-    /*
-     * Stop taking pictures.
-     */
+    // Stop taking pictures
     cam->stopTakingPictures();
-
     return 0;
 }
 
-void callback_func(int done, int total, uint8_t *buf, size_t siz) {
-    fwrite(buf, siz, 1, work.fp);   // here is where the jpeg is actually being written to the SD Card
-}
+void callback_func(int done, int total, uint8_t *buf, size_t siz)
+{ fwrite(buf, siz, 1, work.fp); }   // here is where the jpeg is actually being written to the SD Card

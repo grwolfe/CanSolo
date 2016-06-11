@@ -51,6 +51,7 @@ bool
     recovery_flag,  // flag to handle recovery command
     light_flag,     // flag to track released from rocket
     deploy_flag;    // flag to track deployment conditions
+    reset_flag;     // flag to do software reset
 
 // MBED OBJECT DEFINTIONS //
 Ticker timer;                               // timer interrupt @ 1Hz
