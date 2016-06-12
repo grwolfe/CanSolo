@@ -14,7 +14,7 @@
 #define SCK  p7         // SPI clock line
 #define SS   p8         // SPI slave select line
 #define LIGHT_THRESHOLD 10
-#define DEPLOY_ALT 400
+#define DEPLOY_ALT 420
 #define BUZZ 370
 #define FILENAME "/sd/img_%04u.jpg"
 

@@ -26,9 +26,13 @@ int main()
                 float t, p, a;
                 bmp.ReadData(&t, &p, &a);
                 if (a <= DEPLOY_ALT) deploy();
+                if (altitude <= DEPLOY_ALT) deploy();
             } else if (light() > LIGHT_THRESHOLD) { // if not ejected check if ejected
                 light_flag = true;
             }
+        } else {
+            // if we've deployed start checking for if we've landed
+            if (altitude < 25) recovery();
         }
         gatherTLM();
         saveState();
@@ -61,7 +65,6 @@ void init()
     // setup filesystem for recording data
     fs.mount();
 
-
     // setup bmp sensor
     if (!bmp.Initialize()) xbee.printf("Error in BMP init\r");
         else xbee.printf("BMP init success\r");
@@ -73,7 +76,6 @@ void init()
     // setup pitot sensor
     if (pitot.init()) xbee.printf("Error in ABP init\r");
         else xbee.printf("ABP init success\r");
-
 
     // set up camera
     if (cam.reset() != 0) xbee.printf("Error setting up camera.\r");
@@ -149,8 +151,7 @@ void transmit()
         image_flag,
         recovery_flag,
         gps.fix,
-        light(),
-        tBMP
+        light()
     );
 }
 
@@ -191,6 +192,11 @@ bool saveState()
 void reset()
 {
     reset_flag = false;
+    image_flag = false;
+    recovery_flag = false;
+    light_flag = false;
+    deploy_flag = false;
+
     // setup bmp sensor
     if (!bmp.Initialize()) xbee.printf("Error in BMP init\r");
         else xbee.printf("BMP init success\r");
@@ -227,7 +233,7 @@ void processCommand()
             image_flag = true;      // set flag to handle
             break;
         case 'b':   recovery_flag = true;   break;
-        case 'r':   reset_flag = true;      break;
+        case 'r':   recovery_flag = false; reset_flag = true;      break;
         default: printf("Unknown\r\n");
     }
 }
@@ -247,9 +253,12 @@ void recovery()
     timer.detach();     // end 1Hz transmission
 
     // activate the buzzer
-    buzzer.period_us(BUZZ);
-    buzzer.pulsewidth_us(BUZZ/2);
-    while (1);          // hang until manual shutoff
+    buzzer.period_us(370);
+    buzzer.pulsewidth_us(370/2);
+    while (recovery_flag);          // hang until manual shutoff
+    buzzer.write(0);
+    timer.attach(&transmit, 1);
+
 }
 
 
